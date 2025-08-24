@@ -1,0 +1,252 @@
+
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sentidos Digitales (Versión Final)</title>
+<link rel="icon" href="data:,">
+
+<!-- Preload con RUTAS RELATIVAS (la forma correcta) -->
+<link rel="preload" as="image" href="assets/vision-mid.png">
+<link rel="preload" as="image" href="assets/vision-fg.png">
+<link rel="preload" as="image" href="assets/escucha-mid.png">
+<link rel="preload" as="image" href="assets/escucha-fg.png">
+<link rel="preload" as="image" href="assets/olfato-mid.png">
+<link rel="preload" as="image" href="assets/olfato-fg.png">
+<link rel="preload" as="image" href="assets/sabor-mid.png">
+<link rel="preload" as="image" href="assets/sabor-fg.png">
+<link rel="preload" as="image" href="assets/tacto-mid.png">
+<link rel="preload" as="image" href="assets/tacto-fg.png">
+<link rel="preload" as="image" href="assets/equilibrio-mid.png">
+<link rel="preload" as="image" href="assets/equilibrio-fg.png">
+
+<style>
+  :root{
+    --bg:#0b0d11; --ink:#e6ecf3; --glass:rgba(0,0,0,.28);
+    --dot:#6b707a; --dotA:#fff;
+    --cardW: clamp(280px, 22vw, 440px);
+    --cardGap: clamp(16px, 3vw, 36px);
+    --cardBleed: 44px; --cardRadius: 22px;
+    --scale0:1; --scale1:.92; --scale2:.85; --scale3:.78;
+  }
+  html,body{height:100%;margin:0;background:var(--bg)}
+  body{color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif;overflow:hidden}
+  .stage{position:fixed; inset:0; display:grid; place-items:center}
+  .grab{cursor:grab} .grabbing{cursor:grabbing}
+
+  .track{
+    position:absolute; inset:0; display:flex; align-items:center; gap:var(--cardGap);
+    padding:0 calc(50vw - (var(--cardW)/2)); will-change:transform; touch-action: pan-y;
+  }
+  .card{
+    position:relative; width:var(--cardW); aspect-ratio:3/4; flex-shrink:0;
+    display:grid; place-items:center;
+    filter:drop-shadow(0 42px 120px rgba(0,0,0,.65));
+    will-change:transform; transition:transform .35s ease, opacity .35s ease;
+  }
+  .panel{
+    position:absolute; inset:calc(-1*var(--cardBleed));
+    background-size:cover; background-position:center;
+    border-radius:calc(var(--cardRadius) + var(--cardBleed));
+    filter:saturate(112%); will-change:transform;
+  }
+  .hero{
+    position:absolute; inset:12% 10% 18%;
+    background-size:contain; background-position:center; background-repeat:no-repeat;
+    will-change:transform;
+  }
+  .num{position:absolute; top:12px; left:50%; transform:translateX(-50%); font:12px ui-monospace,Menlo,monospace; letter-spacing:.18em; opacity:.6}
+  .caption{position:absolute; bottom:18px; left:50%; transform:translateX(-50%); background:var(--glass); padding:.42rem .9rem; border-radius:12px; backdrop-filter:blur(8px) saturate(130%); font-size:16px}
+
+  .card[data-pos="0"] { transform:scale(var(--scale0)); opacity:1 }
+  .card[data-pos="1"], .card[data-pos="-1"] { transform:scale(var(--scale1)); opacity:.95 }
+  .card[data-pos="2"], .card[data-pos="-2"] { transform:scale(var(--scale2)); opacity:.9 }
+  .card[data-pos="3"], .card[data-pos="-3"] { transform:scale(var(--scale3)); opacity:.85 }
+
+  .dots{position:fixed; left:50%; bottom:18px; transform:translateX(-50%); display:flex; gap:10px}
+  .dot{width:8px; height:8px; border-radius:50%; background:var(--dot); opacity:.6; border:none}
+  .dot.active{background:var(--dotA); opacity:1; transform:scale(1.25)}
+  .arrows{position:fixed; inset:0; display:flex; align-items:center; justify-content:space-between; pointer-events:none}
+  .arrow{pointer-events:auto; width:44px; height:44px; border-radius:999px; border:1px solid rgba(255,255,255,.25);
+    background:var(--glass); display:grid; place-items:center; margin:0 14px; cursor:pointer; backdrop-filter:blur(6px) saturate(130%)}
+  .arrow svg{width:20px; height:20px; fill:#fff}
+
+  @media (prefers-reduced-motion: reduce){ .card, .track { transition:none !important } }
+  @media (max-width:900px){ .hero{ inset:14% 10% 22%; } }
+</style>
+</head>
+<body>
+<div class="stage grab" id="stage" aria-roledescription="carrusel" aria-label="Sentidos Digitales">
+  <div class="track" id="track" role="listbox" aria-live="polite"></div>
+
+  <div class="arrows">
+    <button class="arrow" id="prev" aria-label="Anterior">
+      <svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+    </button>
+    <button class="arrow" id="next" aria-label="Siguiente">
+      <svg viewBox="0 0 24 24"><path d="M8.59 16.59 10 18l6-6-6-6-1.41 1.41L13.17 12z"/></svg>
+    </button>
+  </div>
+
+  <div class="dots" id="dots" aria-label="posición"></div>
+</div>
+
+<script>
+(() => {
+  /* ===== DATA ===== */
+  const ITEMS = [
+    { key:'vision',     title:'Visión',      mood:'lateral'   },
+    { key:'escucha',    title:'Escucha',     mood:'onda'      },
+    { key:'olfato',     title:'Olfato',      mood:'lissajous' },
+    { key:'sabor',      title:'Sabor',       mood:'respira'   },
+    { key:'tacto',      title:'Tacto',       mood:'gira'      },
+    { key:'equilibrio', title:'Equilibrio',  mood:'balance'   }
+  ];
+  
+  // ===== RUTA RELATIVA Y CORRECTA =====
+  const ASSETS = 'assets/';
+  
+  const AUTO_MS = 6000;
+  const INTENSIDAD = 6;
+  const SCALE = INTENSIDAD/10;
+
+  /* ===== HELPERS ===== */
+  const qs  = (s,el=document)=>el.querySelector(s);
+  const qsa = (s,el=document)=>[...el.querySelectorAll(s)];
+  const clamp = (n,min,max)=> Math.max(min, Math.min(max, n));
+  const rnd = n => Math.round(n*100)/100;
+
+  // Loader simple y robusto: 1 intento, si falla, deja un fondo de gradiente
+  function setBg(el, url, fallbackCss){
+    const img = new Image();
+    img.onload  = () => { el.style.backgroundImage = `url("${url}")`; };
+    img.onerror = () => { console.warn('404 asset:', url); if(fallbackCss) el.style.background = fallbackCss; };
+    img.src = url;
+  }
+
+  /* ===== BUILD ===== */
+  const stage = qs('#stage');
+  const track = qs('#track');
+  const dots  = qs('#dots');
+
+  const cards = ITEMS.map(({key,title},i)=>{
+    const card  = document.createElement('article'); card.className='card'; card.setAttribute('role','option');
+    const panel = document.createElement('div'); panel.className='panel';
+    const hero  = document.createElement('div');  hero.className='hero';
+
+    const num   = document.createElement('div');  num.className='num';
+    num.textContent = (i+1).toString().padStart(4,'0');
+
+    const cap   = document.createElement('div');  cap.className='caption';
+    cap.textContent = title;
+
+    card.append(panel, hero, num, cap);
+    track.appendChild(card);
+
+    setBg(panel, `${ASSETS}${key}-mid.png`,
+      'radial-gradient(ellipse at center, rgba(255,255,255,.08), rgba(0,0,0,.25))');
+    setBg(hero,  `${ASSETS}${key}-fg.png`, '');
+
+    return { card, panel, hero, seed:i+1 };
+  });
+
+  // dots
+  ITEMS.forEach((_,i)=>{
+    const b=document.createElement('button');
+    b.className='dot'+(i===0?' active':''); b.setAttribute('aria-label',`Ir a ${ITEMS[i].title}`);
+    b.onclick=()=>goTo(i,true);
+    dots.appendChild(b);
+  });
+
+  /* ===== LAYOUT ===== */
+  const getCSSNum = name => parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name))||0;
+  const cardWidth = () => (document.querySelector('.card')?.offsetWidth||0) + getCSSNum('--cardGap');
+
+  let idx=0, tx=0, goal=0, dragging=false, lastX=0;
+  const LERP=.12;
+
+  const centerFor = i => -(i * cardWidth());
+  const markPositions = ()=>{
+    cards.forEach((o,i)=> o.card.setAttribute('data-pos', clamp(i-idx,-3,3)));
+    qsa('.dot',dots).forEach((d,i)=> d.classList.toggle('active', i===idx));
+  };
+  function goTo(i, snap=false){
+    const n=ITEMS.length;
+    idx = (i<0? n-1 : i>=n? 0 : i);
+    goal = centerFor(idx);
+    if(snap) tx = goal;
+    markPositions();
+  }
+  const settle = ()=> goTo(Math.round(-tx / cardWidth()), true);
+
+  /* ===== INPUT ===== */
+  stage.addEventListener('mousedown', e=>{ dragging=true; lastX=e.clientX; stage.classList.add('grabbing'); stage.classList.remove('grab'); }, {passive:true});
+  addEventListener('mousemove', e=>{ if(!dragging) return; const dx=e.clientX-lastX; lastX=e.clientX; tx+=dx; }, {passive:true});
+  addEventListener('mouseup',   ()=>{ if(!dragging) return; dragging=false; stage.classList.remove('grabbing'); stage.classList.add('grab'); settle(); }, {passive:true});
+
+  stage.addEventListener('touchstart', e=>{ dragging=true; lastX=e.touches[0].clientX; }, {passive:true});
+  addEventListener('touchmove',  e=>{ if(!dragging) return; const dx=e.touches[0].clientX-lastX; lastX=e.touches[0].clientX; tx+=dx; }, {passive:true});
+  addEventListener('touchend',   ()=>{ if(!dragging) return; dragging=false; settle(); }, {passive:true});
+
+  addEventListener('wheel', e=>{ if(Math.abs(e.deltaY)>Math.abs(e.deltaX)) goTo(idx + Math.sign(e.deltaY), true); }, {passive:true});
+  addEventListener('keydown', e=>{ if(e.key==='ArrowRight') goTo(idx+1,true); if(e.key==='ArrowLeft') goTo(idx-1,true); });
+
+  qs('#prev').onclick = ()=>goTo(idx-1,true);
+  qs('#next').onclick = ()=>goTo(idx+1,true);
+  addEventListener('resize', ()=>{ goal=centerFor(idx); }, {passive:true});
+
+  /* ===== PARALLAX ===== */
+  let mouseX=0, mouseY=0;
+  addEventListener('mousemove', e=>{ mouseX=(e.clientX/innerWidth)*2-1; mouseY=(e.clientY/innerHeight)*2-1; }, {passive:true});
+
+  function mood(kind,t,seed,amp){
+    const s1=seed*1.37, s2=seed*2.13, s3=seed*3.17; let x=0,y=0,r=0;
+    switch(kind){
+      case 'lateral':   x=Math.sin(t*.35+s1)*amp; y=Math.sin(t*.18+s2)*amp*.35; break;
+      case 'onda':      y=Math.sin(t*.70+s1)*amp; x=Math.sin(t*.22+s2)*amp*.35; break;
+      case 'lissajous': x=Math.sin(t*.55+s1)*amp; y=Math.sin(t*.38+s2)*amp;       break;
+      case 'respira':   x=Math.sin(t*.22+s2)*amp*.5; y=Math.sin(t*.22+s3)*amp*.5; break;
+      case 'gira':      x=Math.sin(t*.30+s1)*amp*.6; y=Math.cos(t*.45+s2)*amp*.6; r=Math.sin(t*.4+s3)*3.0*SCALE; break;
+      case 'balance':   x=Math.sin(t*.22+s1)*amp*.5; y=Math.sin(t*.22+s2)*amp*.5; break;
+    }
+    return {x,y,r};
+  }
+
+  function animate(now=performance.now()){
+    if(!dragging) tx = tx + (goal - tx) * LERP;
+    track.style.transform = `translate3d(${rnd(tx)}px,0,0)`;
+
+    const t = now/1000;
+    cards.forEach((o,i)=>{
+      const M = ITEMS[i].mood;
+      const p = mood(M,t,o.seed+11, 10*SCALE);
+      const h = mood(M,t,o.seed+23,  8*SCALE);
+      o.panel.style.transform = `translate3d(${rnd(p.x + mouseX*6)}px, ${rnd(p.y + mouseY*6)}px, 0)`;
+      o.hero .style.transform = `translate3d(${rnd(h.x + mouseX*4)}px, ${rnd(h.y + mouseY*4)}px, 0) rotate(${rnd(h.r||0)}deg)`;
+    });
+
+    requestAnimationFrame(animate);
+  }
+
+  /* ===== AUTOPLAY ===== */
+  let autoId=null;
+  function startAuto(){ stopAuto(); autoId=setInterval(()=> goTo(idx+1,true), AUTO_MS); }
+  function stopAuto(){ if(autoId){ clearInterval(autoId); autoId=null; } }
+
+  /* ===== INIT ===== */
+  function init(){
+    tx = goal = centerFor(0);
+    stage.classList.add('grab');
+    markPositions();
+    startAuto();
+    requestAnimationFrame(animate);
+  }
+  if(document.readyState==='complete') init(); else addEventListener('load', init);
+
+  // util de diagnóstico desde la consola
+  window.SM = ()=>({idx, urlEjemplo:`${location.origin}/assets/vision-fg.png`});
+})();
+</script>
+</body>
+</html>
