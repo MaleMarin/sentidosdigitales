@@ -1,265 +1,227 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>SMOOTHY · Sentidos</title>
-  <style>
-    :root{
-      --bg:#0b0d10;
-      --panel:#12141a;
-      --ink:#eaeef3;
-      --muted:#a9b1bd;
-      --ring:#2a2f3a;
-      --glow:#ff58b9;
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0;
-      font:16px/1.45 Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-      color:var(--ink);
-      background:
-        radial-gradient(1200px 600px at 50% -30%, #1b1f27 0%, transparent 60%),
-        radial-gradient(800px 400px at 10% 120%, #111420 0%, transparent 60%),
-        var(--bg);
-      overflow:hidden;
-    }
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>SMOOTHY · Sentidos</title>
+<style>
+  :root{
+    --bg:#0b0d10; --panel:#12141a; --ink:#eaeef3; --muted:#a9b1bd;
+  }
+  *{box-sizing:border-box} html,body{height:100%}
+  body{
+    margin:0; color:var(--ink);
+    font:16px/1.45 Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    background:
+      radial-gradient(1200px 600px at 50% -30%, #1b1f27 0%, transparent 60%),
+      radial-gradient(800px 400px at 10% 120%, #111420 0%, transparent 60%),
+      var(--bg);
+    overflow:hidden;
+  }
 
-    /* CABECERA */
-    .top{
-      position:fixed; inset:0 0 auto 0; height:64px;
-      display:flex; align-items:center; gap:16px;
-      padding:0 clamp(16px,5vw,32px);
-      background:linear-gradient(180deg, rgba(7,8,10,.85), rgba(7,8,10,0));
-      backdrop-filter: blur(6px);
-      pointer-events:none; z-index:5;
-    }
-    .logo{ font-weight:800; letter-spacing:.06em; font-size:20px; pointer-events:auto}
-    .hint{ color:var(--muted); font-size:14px; pointer-events:auto}
+  /* header */
+  .top{position:fixed; inset:0 0 auto 0; height:64px; display:flex; align-items:center; gap:16px;
+       padding:0 clamp(16px,5vw,32px); background:linear-gradient(180deg, rgba(7,8,10,.85), rgba(7,8,10,0));
+       backdrop-filter: blur(6px); z-index:5}
+  .logo{font-weight:800; letter-spacing:.06em; font-size:20px}
+  .hint{color:var(--muted); font-size:14px}
 
-    /* CARRUSEL */
-    .stage{
-      position:absolute; inset:0; display:flex; place-items:center; overflow:hidden;
-      padding-top:64px;
-    }
-    .track{
-      width:min(96vw,1400px);
-      margin-inline:auto;
-      display:flex; align-items:center; gap:clamp(20px,4vw,48px);
-      overflow:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch;
-      padding:clamp(16px,3vw,32px);
-    }
-    .track::-webkit-scrollbar{height:10px}
-    .track::-webkit-scrollbar-thumb{background:#2a2f38; border-radius:8px}
+  /* carrusel */
+  .stage{position:absolute; inset:0; display:flex; place-items:center; padding-top:64px}
+  .track{
+    width:min(96vw,1400px); margin-inline:auto; display:flex; align-items:center;
+    gap:clamp(20px,4vw,48px); overflow:auto; scroll-snap-type:x mandatory;
+    -webkit-overflow-scrolling:touch; padding:clamp(16px,3vw,32px);
+  }
+  .track::-webkit-scrollbar{height:10px} .track::-webkit-scrollbar-thumb{background:#2a2f38; border-radius:8px}
 
-    .card{
-      position:relative;
-      flex:0 0 auto;
-      width:clamp(260px,28vw,420px);
-      height:clamp(360px,60vh,620px);   /* ← tamaño explícito para evitar colapso */
-      border-radius:28px;
-      background:var(--panel);
-      box-shadow:
-        inset 0 1px 0 rgba(255,255,255,.03),
-        0 30px 60px rgba(0,0,0,.55);
-      overflow:hidden;
-      scroll-snap-align:center;
-      transform:translateZ(0);
-      isolation:isolate;
-    }
+  /* tarjeta base (con perspectiva) */
+  .card{
+    flex:0 0 auto; width:clamp(260px,28vw,420px); height:clamp(360px,60vh,620px);
+    border-radius:28px; background:var(--panel); overflow:hidden; scroll-snap-align:center;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.03), 0 30px 60px rgba(0,0,0,.55);
+    perspective: 1000px;           /* ← perspectiva para tilt 3D */
+    transform:translateZ(0); isolation:isolate; position:relative;
+  }
+  .card__inner{
+    width:100%; height:100%; transform-style: preserve-3d; will-change: transform;
+    transition: transform .18s ease-out;
+  }
 
-    .card .num{
-      position:absolute; top:18px; left:24px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      letter-spacing:.35em; color:#9aa3b3; opacity:.4; font-size:12px;
-      z-index:2;
-    }
-    .hero{
-      position:absolute; inset:0; z-index:1;
-      background-position:center;
-      background-size:cover;
-      filter:saturate(1.04) contrast(1.06);
-    }
-    /* brillo radial */
-    .hero::after{
-      content:""; position:absolute; inset:-30% -10%;
-      background:radial-gradient(600px 380px at 50% 60%,
-        rgba(255,88,185,.18), rgba(140,174,255,.10) 40%,
-        rgba(0,0,0,0) 70%);
-      mix-blend-mode:screen; pointer-events:none;
-    }
-    .caption{
-      position:absolute; bottom:18px; left:50%; translate:-50% 0;
-      padding:.4rem .75rem; border-radius:999px;
-      background:rgba(255,255,255,.06); backdrop-filter:blur(6px);
-      box-shadow:0 8px 24px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06);
-      font-weight:600; font-size:14px; z-index:3;
-    }
+  .num{
+    position:absolute; top:18px; left:24px; z-index:4;
+    font:12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    letter-spacing:.35em; color:#9aa3b3; opacity:.4;
+  }
 
-    /* Flechas */
-    .arrows{
-      position:fixed; right:18px; bottom:18px; display:flex; gap:10px; z-index:6;
-    }
-    .btn{
-      width:42px; height:42px; display:grid; place-items:center;
-      border-radius:50%; color:#dbe0e8; background:#141821;
-      box-shadow:0 10px 24px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.05);
-      border:1px solid #2a2f38; cursor:pointer; user-select:none;
-    }
-    .btn:active{transform:translateY(1px)}
-    svg{width:18px; height:18px}
+  /* CAPAS */
+  .layer{position:absolute; inset:-6% -6%; transform-style:preserve-3d}
+  .layer img{position:absolute; inset:0; margin:auto; width:100%; height:100%; object-fit:cover; pointer-events:none; filter:saturate(1.05)}
+  .layer.bg{z-index:1}
+  .layer.fg{z-index:3}
 
-    /* Dots */
-    .dots{
-      position:fixed; left:50%; bottom:18px; translate:-50% 0; display:flex; gap:10px; z-index:6;
-    }
-    .dot{ width:8px; height:8px; border-radius:50%; background:#3b4351; }
-    .dot.active{ background:#ffffff; }
+  /* tamaños relativos: fg más grande que bg */
+  .layer.bg img{transform: translateZ(-20px) scale(1.06)}   /* fondo un poco mayor */
+  .layer.fg img{transform: translateZ(40px)  scale(1.18)}   /* primer plano aún mayor */
 
-    @media (max-width:640px){
-      .card{ width:80vw; height:min(68vh,560px) }
-    }
-  </style>
+  /* brillo */
+  .glow{position:absolute; inset:-30% -10%; z-index:2; pointer-events:none;
+        background:radial-gradient(600px 380px at 50% 62%, rgba(255,88,185,.18), rgba(140,174,255,.10) 40%, rgba(0,0,0,0) 70%);
+        mix-blend-mode:screen; transform:translateZ(10px)}
+
+  .caption{
+    position:absolute; left:50%; bottom:18px; translate:-50% 0; z-index:5;
+    padding:.44rem .8rem; border-radius:999px; font-weight:600; font-size:14px;
+    background:rgba(255,255,255,.06); backdrop-filter:blur(6px);
+    box-shadow:0 8px 24px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06);
+  }
+
+  /* flechas + dots */
+  .arrows{position:fixed; right:18px; bottom:18px; display:flex; gap:10px; z-index:6}
+  .btn{width:42px; height:42px; display:grid; place-items:center; border-radius:50%; color:#dbe0e8;
+       background:#141821; box-shadow:0 10px 24px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.05);
+       border:1px solid #2a2f38; cursor:pointer}
+  .btn:active{transform:translateY(1px)} svg{width:18px; height:18px}
+
+  .dots{position:fixed; left:50%; bottom:18px; translate:-50% 0; display:flex; gap:10px; z-index:6}
+  .dot{width:8px; height:8px; border-radius:50%; background:#3b4351} .dot.active{background:#fff}
+
+  @media (max-width:640px){ .card{ width:80vw; height:min(68vh,560px)} }
+</style>
 </head>
 <body>
-  <header class="top">
-    <div class="logo">SMOOTHY</div>
-    <div class="hint">Arrastra / usa las flechas → Inercia + loop infinito + parallax sutil</div>
-  </header>
+<header class="top">
+  <div class="logo">SMOOTHY</div>
+  <div class="hint">Arrastra / usa las flechas → Inercia + loop + tilt 3D + parallax</div>
+</header>
 
-  <main class="stage">
-    <div id="track" class="track" aria-label="Carrusel de sentidos"></div>
-  </main>
+<main class="stage"><div id="track" class="track" aria-label="Carrusel"></div></main>
+<div class="arrows">
+  <button class="btn" id="prev" aria-label="Anterior"><svg viewBox="0 0 24 24" fill="none"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  <button class="btn" id="next" aria-label="Siguiente"><svg viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+</div>
+<div id="dots" class="dots" role="tablist"></div>
 
-  <div class="arrows" aria-hidden="false">
-    <button class="btn" id="prev" aria-label="Anterior" title="Anterior">
-      <svg viewBox="0 0 24 24" fill="none"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    </button>
-    <button class="btn" id="next" aria-label="Siguiente" title="Siguiente">
-      <svg viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    </button>
-  </div>
+<script>
+  /* ---- datos ---- */
+  const slides = [
+    {key:'vision',      title:'Visión'},
+    {key:'escucha',     title:'Escucha'},
+    {key:'olfato',      title:'Olfato'},
+    {key:'sabor',       title:'Sabor'},
+    {key:'tacto',       title:'Tacto'},
+    {key:'equilibrio',  title:'Equilibrio'}
+  ];
 
-  <div id="dots" class="dots" role="tablist" aria-label="Posición"></div>
+  const $track = document.getElementById('track');
+  const $dots = document.getElementById('dots');
 
-  <script>
-    // Slides y títulos
-    const slides = [
-      {key:'vision',      title:'Visión'},
-      {key:'escucha',     title:'Escucha'},
-      {key:'olfato',      title:'Olfato'},
-      {key:'sabor',       title:'Sabor'},
-      {key:'tacto',       title:'Tacto'},
-      {key:'equilibrio',  title:'Equilibrio'}
-    ];
+  /* ---- crear tarjetas (2 capas) ---- */
+  slides.forEach((s,i)=>{
+    const card = document.createElement('article');
+    card.className = 'card'; card.setAttribute('role','group');
 
-    const $track = document.getElementById('track');
-    const $dots  = document.getElementById('dots');
+    const inner = document.createElement('div'); inner.className='card__inner';
 
-    // Crea tarjetas
-    slides.forEach((s,i)=>{
-      const card  = document.createElement('article');
-      card.className = 'card';
-      card.setAttribute('role','group');
-      card.setAttribute('aria-roledescription','slide');
-      card.setAttribute('aria-label', `${String(i+1).padStart(4,'0')} ${s.title}`);
+    const num = document.createElement('div'); num.className='num'; num.textContent=String(i+1).padStart(4,'0');
 
-      const n = document.createElement('div');
-      n.className = 'num';
-      n.textContent = String(i+1).padStart(4,'0');
+    const bg = document.createElement('div'); bg.className='layer bg';
+    const bgImg = document.createElement('img'); bgImg.alt = `${s.title} fondo`;
+    bgImg.src = `assets/${s.key}-mid.png`; bg.append(bgImg);
 
-      const hero = document.createElement('div');
-      hero.className = 'hero';
-      // Imagen principal con fallback automático: -fg.png → -mid.png si 404
-      const primary = `assets/${s.key}-fg.png`;
-      const fallback = `assets/${s.key}-mid.png`;
+    const glow = document.createElement('div'); glow.className='glow';
 
-      // Intentamos precargar para poder decidir si hacemos fallback
-      const img = new Image();
-      img.onload = () => hero.style.backgroundImage = `url("${primary}")`;
-      img.onerror = () => hero.style.backgroundImage = `url("${fallback}")`;
-      img.src = primary;
+    const fg = document.createElement('div'); fg.className='layer fg';
+    const fgImg = document.createElement('img'); fgImg.alt = `${s.title} primer plano`;
+    fgImg.src = `assets/${s.key}-fg.png`;
+    // fallback por si falta fg
+    fgImg.addEventListener('error', ()=>{ fgImg.src = `assets/${s.key}-mid.png`; });
 
-      const cap = document.createElement('div');
-      cap.className = 'caption';
-      cap.textContent = s.title;
+    fg.append(fgImg);
 
-      card.append(n, hero, cap);
-      $track.append(card);
+    const cap = document.createElement('div'); cap.className='caption'; cap.textContent=s.title;
 
-      // Dot
-      const dot = document.createElement('div');
-      dot.className = 'dot' + (i===0 ? ' active' : '');
-      dot.setAttribute('role','tab');
-      dot.addEventListener('click', () => scrollToIndex(i));
-      $dots.append(dot);
-    });
+    inner.append(num, bg, glow, fg, cap);
+    card.append(inner);
+    $track.append(card);
 
-    // Navegación
-    const cards = [...document.querySelectorAll('.card')];
-    const dots  = [...document.querySelectorAll('.dot')];
+    // dot
+    const dot = document.createElement('div'); dot.className='dot'+(i===0?' active':'');
+    dot.addEventListener('click',()=>scrollToIndex(i)); $dots.append(dot);
 
-    function cardWidth(){ // ancho + gap
-      if (!cards[0]) return 0;
-      const cs = getComputedStyle($track);
-      const gap = parseFloat(cs.gap||'0');
-      return cards[0].offsetWidth + gap;
+    attachTilt(card, inner, fgImg, bgImg); // tilt + parallax a cada tarjeta
+  });
+
+  const cards = [...document.querySelectorAll('.card')];
+  const dots  = [...document.querySelectorAll('.dot')];
+
+  /* ---- navegación del carrusel ---- */
+  function activeIndex(){
+    const mid = $track.scrollLeft + $track.clientWidth/2;
+    let idx=0, best=1e9;
+    cards.forEach((c,i)=>{const cx=c.offsetLeft+c.offsetWidth/2; const d=Math.abs(cx-mid); if(d<best){best=d; idx=i;}});
+    return idx;
+  }
+  function setActiveDot(i){ dots.forEach((d,j)=>d.classList.toggle('active', j===i)); }
+  function scrollToIndex(i){
+    const c=cards[i]; const x=c.offsetLeft - ($track.clientWidth - c.offsetWidth)/2;
+    $track.scrollTo({left:x, behavior:'smooth'}); setActiveDot(i);
+  }
+  document.getElementById('prev').onclick=()=>{let i=activeIndex()-1; if(i<0)i=cards.length-1; scrollToIndex(i);};
+  document.getElementById('next').onclick=()=>{let i=activeIndex()+1; if(i>cards.length-1)i=0; scrollToIndex(i);};
+  $track.addEventListener('scroll', ()=>{clearTimeout($track._t); $track._t=setTimeout(()=>setActiveDot(activeIndex()),60);});
+  window.addEventListener('load', ()=>scrollToIndex(0));
+
+  /* ---- Tilt 3D + Parallax con inercia ---- */
+  function attachTilt(card, inner, fgImg, bgImg){
+    const maxTilt=12;         // grados
+    const maxShift=18;        // px de parallax (base)
+    let target={rx:0, ry:0, px:0, py:0};
+    let state ={rx:0, ry:0, px:0, py:0};
+    let raf;
+
+    function onMove(e){
+      const r=card.getBoundingClientRect();
+      const x=(e.clientX??(e.touches?.[0]?.clientX))-r.left;
+      const y=(e.clientY??(e.touches?.[0]?.clientY))-r.top;
+      const nx=(x/r.width)*2-1;     // -1..1
+      const ny=(y/r.height)*2-1;
+
+      target.ry =  nx * maxTilt;    // rotY con el eje X
+      target.rx = -ny * maxTilt;    // rotX con el eje Y
+      target.px =  nx * maxShift;
+      target.py =  ny * maxShift;
+
+      if(!raf){ raf=requestAnimationFrame(update); }
     }
-    function activeIndex(){
-      // centro más cercano
-      const mid = $track.scrollLeft + $track.clientWidth/2;
-      let idx = 0, dMin = Infinity;
-      cards.forEach((c,i)=>{
-        const cx = c.offsetLeft + c.offsetWidth/2;
-        const d = Math.abs(cx - mid);
-        if (d < dMin){ dMin = d; idx = i; }
-      });
-      return idx;
+    function onLeave(){
+      target={rx:0,ry:0,px:0,py:0};
+      if(!raf){ raf=requestAnimationFrame(update); }
     }
-    function setActiveDot(i){
-      dots.forEach((d,j)=>d.classList.toggle('active', j===i));
+    function lerp(a,b,t){ return a+(b-a)*t; }
+    function update(){
+      // inercia suave
+      state.rx=lerp(state.rx,target.rx,.12);
+      state.ry=lerp(state.ry,target.ry,.12);
+      state.px=lerp(state.px,target.px,.16);
+      state.py=lerp(state.py,target.py,.16);
+
+      inner.style.transform = `rotateX(${state.rx}deg) rotateY(${state.ry}deg)`;
+
+      // parallax: fg acompaña más, bg menos y en sentido opuesto
+      fgImg.style.transform = `translateZ(40px) scale(1.18) translate(${state.px*1.2}px, ${state.py*1.2}px)`;
+      bgImg.style.transform = `translateZ(-20px) scale(1.06) translate(${-state.px*0.6}px, ${-state.py*0.6}px)`;
+
+      const close = Math.abs(state.rx-target.rx)+Math.abs(state.ry-target.ry)+Math.abs(state.px-target.px)+Math.abs(state.py-target.py) < 0.08;
+      if(!close){ raf=requestAnimationFrame(update); } else { raf=null; }
     }
-    function scrollToIndex(i){
-      const x = cards[i].offsetLeft - ($track.clientWidth - cards[i].offsetWidth)/2;
-      $track.scrollTo({left:x, behavior:'smooth'});
-      setActiveDot(i);
-    }
 
-    document.getElementById('prev').addEventListener('click', ()=>{
-      let i = activeIndex() - 1; if (i < 0) i = cards.length-1;
-      scrollToIndex(i);
-    });
-    document.getElementById('next').addEventListener('click', ()=>{
-      let i = activeIndex() + 1; if (i > cards.length-1) i = 0;
-      scrollToIndex(i);
-    });
-
-    // drag para desktop
-    let isDown=false, startX=0, startLeft=0;
-    $track.addEventListener('pointerdown', e=>{
-      isDown=true; startX=e.clientX; startLeft=$track.scrollLeft;
-      $track.setPointerCapture(e.pointerId);
-    });
-    $track.addEventListener('pointermove', e=>{
-      if(!isDown) return;
-      $track.scrollLeft = startLeft - (e.clientX - startX);
-    });
-    $track.addEventListener('pointerup', e=>{
-      isDown=false;
-      setActiveDot(activeIndex());
-    });
-
-    // Ajusta dots al hacer scroll manual
-    $track.addEventListener('scroll', ()=>{
-      // throttle suave
-      clearTimeout($track._t);
-      $track._t=setTimeout(()=>setActiveDot(activeIndex()), 60);
-    });
-
-    // Asegura que algo visible esté centrado al cargar
-    window.addEventListener('load', ()=> scrollToIndex(0));
-    window.addEventListener('resize', ()=> setActiveDot(activeIndex()));
-  </script>
+    card.addEventListener('pointermove', onMove);
+    card.addEventListener('pointerleave', onLeave);
+    card.addEventListener('pointerdown', onMove);  // empieza rápido en touch/drag
+    card.addEventListener('touchmove', e=>{onMove(e); e.preventDefault();},{passive:false});
+    card.addEventListener('touchend', onLeave);
+  }
+</script>
 </body>
 </html>
