@@ -267,7 +267,7 @@ function updateProgress(){
 function attachTilt(card){
   const layer = card.querySelector('.layer');
   let tx=0, ty=0, rx=0, ry=0, trx=0, tryy=0;
-  const MAX = 16; // grados
+  const MAX = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--max-tilt')) || 16;
 
   function setTargetFromPointer(e){
     const rect = card.getBoundingClientRect();
