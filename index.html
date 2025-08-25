@@ -1,252 +1,300 @@
-
 <!doctype html>
 <html lang="es">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Sentidos Digitales (Versión Final)</title>
-<link rel="icon" href="data:,">
-
-<!-- Preload con RUTAS RELATIVAS (la forma correcta) -->
-<link rel="preload" as="image" href="assets/vision-mid.png">
-<link rel="preload" as="image" href="assets/vision-fg.png">
-<link rel="preload" as="image" href="assets/escucha-mid.png">
-<link rel="preload" as="image" href="assets/escucha-fg.png">
-<link rel="preload" as="image" href="assets/olfato-mid.png">
-<link rel="preload" as="image" href="assets/olfato-fg.png">
-<link rel="preload" as="image" href="assets/sabor-mid.png">
-<link rel="preload" as="image" href="assets/sabor-fg.png">
-<link rel="preload" as="image" href="assets/tacto-mid.png">
-<link rel="preload" as="image" href="assets/tacto-fg.png">
-<link rel="preload" as="image" href="assets/equilibrio-mid.png">
-<link rel="preload" as="image" href="assets/equilibrio-fg.png">
-
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Smooothy-like • Sentidos</title>
 <style>
   :root{
-    --bg:#0b0d11; --ink:#e6ecf3; --glass:rgba(0,0,0,.28);
-    --dot:#6b707a; --dotA:#fff;
-    --cardW: clamp(280px, 22vw, 440px);
-    --cardGap: clamp(16px, 3vw, 36px);
-    --cardBleed: 44px; --cardRadius: 22px;
-    --scale0:1; --scale1:.92; --scale2:.85; --scale3:.78;
+    --bg:#0b0b0d;
+    --ink:#eaeaea;
+    --muted:#8a8a8f;
+    --card-w: 36vw;
+    --card-h: 58vh;
+    --gap: 6vw;               /* espacio entre tarjetas */
+    --bullet: #6f6f76;
+    --bullet-active:#ffffff;
+    --rad: 28px;
   }
-  html,body{height:100%;margin:0;background:var(--bg)}
-  body{color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif;overflow:hidden}
-  .stage{position:fixed; inset:0; display:grid; place-items:center}
-  .grab{cursor:grab} .grabbing{cursor:grabbing}
 
-  .track{
-    position:absolute; inset:0; display:flex; align-items:center; gap:var(--cardGap);
-    padding:0 calc(50vw - (var(--cardW)/2)); will-change:transform; touch-action: pan-y;
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent }
+  html,body{ height:100% }
+  body{
+    margin:0; color:var(--ink); background:var(--bg);
+    font: 500 14px/1.35 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial;
+    overflow:hidden; /* canvas fijo */
   }
-  .card{
-    position:relative; width:var(--cardW); aspect-ratio:3/4; flex-shrink:0;
-    display:grid; place-items:center;
-    filter:drop-shadow(0 42px 120px rgba(0,0,0,.65));
-    will-change:transform; transition:transform .35s ease, opacity .35s ease;
+
+  /* ========== Header ========== */
+  .topbar{
+    position:fixed; inset:0 0 auto 0; height:72px; display:flex; align-items:center;
+    padding:0 22px; gap:22px; z-index:40; pointer-events:none;
   }
-  .panel{
-    position:absolute; inset:calc(-1*var(--cardBleed));
-    background-size:cover; background-position:center;
-    border-radius:calc(var(--cardRadius) + var(--cardBleed));
-    filter:saturate(112%); will-change:transform;
+  .brand{
+    font-weight:900; letter-spacing:.08em; font-size:20px; pointer-events:auto;
   }
-  .hero{
-    position:absolute; inset:12% 10% 18%;
-    background-size:contain; background-position:center; background-repeat:no-repeat;
+  .help{ color:var(--muted); max-width:520px; pointer-events:auto }
+  .sep{ flex:1 }
+
+  /* ========== Stage ========== */
+  .stage{
+    position:fixed; inset:0; display:grid; place-items:center; overflow:hidden;
+  }
+  .rail{
+    position:relative; height:var(--card-h);
+    /* ancho virtual = N*(card + gap) => lo controlamos por transform */
     will-change:transform;
   }
-  .num{position:absolute; top:12px; left:50%; transform:translateX(-50%); font:12px ui-monospace,Menlo,monospace; letter-spacing:.18em; opacity:.6}
-  .caption{position:absolute; bottom:18px; left:50%; transform:translateX(-50%); background:var(--glass); padding:.42rem .9rem; border-radius:12px; backdrop-filter:blur(8px) saturate(130%); font-size:16px}
 
-  .card[data-pos="0"] { transform:scale(var(--scale0)); opacity:1 }
-  .card[data-pos="1"], .card[data-pos="-1"] { transform:scale(var(--scale1)); opacity:.95 }
-  .card[data-pos="2"], .card[data-pos="-2"] { transform:scale(var(--scale2)); opacity:.9 }
-  .card[data-pos="3"], .card[data-pos="-3"] { transform:scale(var(--scale3)); opacity:.85 }
+  /* ========== Card ========== */
+  .card{
+    position:absolute; top:50%; transform:translate3d(0,-50%,0);
+    width:var(--card-w); height:var(--card-h);
+    border-radius: var(--rad);
+    overflow:hidden;
+    box-shadow: 0 40px 80px rgba(0,0,0,.35);
+    cursor: grab;
+    user-select:none;
+    transition: filter .25s ease;
+  }
+  .card:active{ cursor:grabbing }
+  .panel{
+    position:absolute; inset:0;
+    /* 3 capas: fg, mid, degradado */
+    --fg-size: min(56%, 520px);
+    --mid-size: min(92%, 860px);
+    background:
+      var(--fg) center / var(--fg-size) no-repeat,
+      var(--mid) center / var(--mid-size) no-repeat,
+      radial-gradient(120% 120% at 50% 50%, rgba(255,255,255,.08) 0%, rgba(0,0,0,.25) 70%);
+    border-radius:inherit;
+  }
+  .label{
+    position:absolute; inset:auto auto 20px 20px;
+    background:rgba(255,255,255,.08); backdrop-filter: blur(6px);
+    padding:6px 12px; border-radius:14px; font-weight:600;
+  }
 
-  .dots{position:fixed; left:50%; bottom:18px; transform:translateX(-50%); display:flex; gap:10px}
-  .dot{width:8px; height:8px; border-radius:50%; background:var(--dot); opacity:.6; border:none}
-  .dot.active{background:var(--dotA); opacity:1; transform:scale(1.25)}
-  .arrows{position:fixed; inset:0; display:flex; align-items:center; justify-content:space-between; pointer-events:none}
-  .arrow{pointer-events:auto; width:44px; height:44px; border-radius:999px; border:1px solid rgba(255,255,255,.25);
-    background:var(--glass); display:grid; place-items:center; margin:0 14px; cursor:pointer; backdrop-filter:blur(6px) saturate(130%)}
-  .arrow svg{width:20px; height:20px; fill:#fff}
+  /* tilt/parallax sombra suave */
+  .card::after{
+    content:""; position:absolute; inset:-40px; border-radius:inherit;
+    background: radial-gradient(40% 60% at 50% 80%, rgba(0,0,0,.35) 0, transparent 70%);
+    mix-blend-mode:overlay; pointer-events:none;
+  }
 
-  @media (prefers-reduced-motion: reduce){ .card, .track { transition:none !important } }
-  @media (max-width:900px){ .hero{ inset:14% 10% 22%; } }
+  /* ========== arrows ========== */
+  .arrows{ position:fixed; inset:auto 18px 40px auto; display:flex; gap:12px; z-index:20 }
+  .btn{
+    width:44px; height:44px; display:grid; place-items:center; border-radius:50%;
+    background:rgba(255,255,255,.06); color:#fff; border:1px solid rgba(255,255,255,.12);
+    cursor:pointer; transition:transform .15s ease, background .2s ease;
+  }
+  .btn:hover{ transform:scale(1.06); background:rgba(255,255,255,.12) }
+
+  /* ========== bullets ========== */
+  .dots{
+    position:fixed; inset:auto 0 24px 0; display:flex; gap:10px; justify-content:center; z-index:20;
+  }
+  .dot{
+    width:8px; height:8px; border-radius:50%; background:var(--bullet); opacity:.65;
+    transition:transform .2s ease, opacity .2s ease, background .2s ease;
+  }
+  .dot.is-active{ background:var(--bullet-active); opacity:1; transform:scale(1.35) }
+
+  /* Responsivo */
+  @media (max-width: 1024px){
+    :root{ --card-w: 64vw; --card-h: 58vh; --gap: 8vw }
+    .help{ display:none }
+  }
+  @media (max-width: 640px){
+    :root{ --card-w: 82vw; --card-h: 62vh; --gap: 10vw }
+  }
 </style>
 </head>
 <body>
-<div class="stage grab" id="stage" aria-roledescription="carrusel" aria-label="Sentidos Digitales">
-  <div class="track" id="track" role="listbox" aria-live="polite"></div>
 
-  <div class="arrows">
-    <button class="arrow" id="prev" aria-label="Anterior">
-      <svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
-    </button>
-    <button class="arrow" id="next" aria-label="Siguiente">
-      <svg viewBox="0 0 24 24"><path d="M8.59 16.59 10 18l6-6-6-6-1.41 1.41L13.17 12z"/></svg>
-    </button>
-  </div>
+<header class="topbar">
+  <div class="brand">SMOOTHY</div>
+  <div class="help">Arrastra / usa las flechas → Inercia + loop infinito + parallax sutil (estilo smooothy)</div>
+  <div class="sep"></div>
+</header>
 
-  <div class="dots" id="dots" aria-label="posición"></div>
+<main class="stage" id="stage">
+  <div class="rail" id="rail"></div>
+</main>
+
+<div class="arrows">
+  <button class="btn" id="prev" aria-label="Anterior">←</button>
+  <button class="btn" id="next" aria-label="Siguiente">→</button>
 </div>
+<div class="dots" id="dots"></div>
 
 <script>
-(() => {
-  /* ===== DATA ===== */
-  const ITEMS = [
-    { key:'vision',     title:'Visión',      mood:'lateral'   },
-    { key:'escucha',    title:'Escucha',     mood:'onda'      },
-    { key:'olfato',     title:'Olfato',      mood:'lissajous' },
-    { key:'sabor',      title:'Sabor',       mood:'respira'   },
-    { key:'tacto',      title:'Tacto',       mood:'gira'      },
-    { key:'equilibrio', title:'Equilibrio',  mood:'balance'   }
-  ];
-  
-  // ===== RUTA RELATIVA Y CORRECTA =====
-  const ASSETS = 'assets/';
-  
-  const AUTO_MS = 6000;
-  const INTENSIDAD = 6;
-  const SCALE = INTENSIDAD/10;
+/* ===========================================================
+   Datos de tarjetas (usa tus PNG en /assets)
+   Cada ítem: {title, mid, fg, tint}  tint: color de envolvente al pasar
+=========================================================== */
+const ITEMS = [
+  { title:"Visión",     mid:"/assets/vision-mid.png",     fg:"/assets/vision-fg.png",     tint:"#5B7BE1" },
+  { title:"Escucha",    mid:"/assets/escucha-mid.png",    fg:"/assets/escucha-fg.png",    tint:"#E15B9C" },
+  { title:"Olfato",     mid:"/assets/olfato-mid.png",     fg:"/assets/olfato-fg.png",     tint:"#E06AA0" },
+  { title:"Sabor",      mid:"/assets/sabor-mid.png",      fg:"/assets/sabor-fg.png",      tint:"#DE7C7B" },
+  { title:"Tacto",      mid:"/assets/tacto-mid.png",      fg:"/assets/tacto-fg.png",      tint:"#C96AE6" },
+  { title:"Equilibrio", mid:"/assets/equilibrio-mid.png", fg:"/assets/equilibrio-fg.png", tint:"#E0A23A" },
+];
 
-  /* ===== HELPERS ===== */
-  const qs  = (s,el=document)=>el.querySelector(s);
-  const qsa = (s,el=document)=>[...el.querySelectorAll(s)];
-  const clamp = (n,min,max)=> Math.max(min, Math.min(max, n));
-  const rnd = n => Math.round(n*100)/100;
+const rail = document.getElementById('rail');
+const dots = document.getElementById('dots');
 
-  // Loader simple y robusto: 1 intento, si falla, deja un fondo de gradiente
-  function setBg(el, url, fallbackCss){
-    const img = new Image();
-    img.onload  = () => { el.style.backgroundImage = `url("${url}")`; };
-    img.onerror = () => { console.warn('404 asset:', url); if(fallbackCss) el.style.background = fallbackCss; };
-    img.src = url;
-  }
+/* Construye DOM de tarjetas */
+const cards = ITEMS.map((it, i) => {
+  const el = document.createElement('article');
+  el.className = 'card';
+  // set backgrounds mediante custom props
+  el.style.setProperty('--mid', `url('${it.mid}')`);
+  el.style.setProperty('--fg',  `url('${it.fg}')`);
 
-  /* ===== BUILD ===== */
-  const stage = qs('#stage');
-  const track = qs('#track');
-  const dots  = qs('#dots');
+  // capa pintora
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  el.appendChild(panel);
 
-  const cards = ITEMS.map(({key,title},i)=>{
-    const card  = document.createElement('article'); card.className='card'; card.setAttribute('role','option');
-    const panel = document.createElement('div'); panel.className='panel';
-    const hero  = document.createElement('div');  hero.className='hero';
+  // etiqueta
+  const cap = document.createElement('div');
+  cap.className = 'label';
+  cap.textContent = it.title;
+  el.appendChild(cap);
 
-    const num   = document.createElement('div');  num.className='num';
-    num.textContent = (i+1).toString().padStart(4,'0');
+  rail.appendChild(el);
+  return el;
+});
 
-    const cap   = document.createElement('div');  cap.className='caption';
-    cap.textContent = title;
+/* Bullets */
+const dotEls = ITEMS.map((_,i)=>{
+  const d=document.createElement('div');
+  d.className='dot';
+  dots.appendChild(d);
+  d.addEventListener('click',()=>snapTo(i));
+  return d;
+});
 
-    card.append(panel, hero, num, cap);
-    track.appendChild(card);
+/* ---------------- Slider con inercia + loop ---------------- */
+let N = ITEMS.length;
+let gapPx = 0;       // se calcula en resize
+let cardW = 0;
 
-    setBg(panel, `${ASSETS}${key}-mid.png`,
-      'radial-gradient(ellipse at center, rgba(255,255,255,.08), rgba(0,0,0,.25))');
-    setBg(hero,  `${ASSETS}${key}-fg.png`, '');
+let current = 0;     // posición flotante (0..N)
+let target  = 0;     // destino (arrastre / flechas)
+let press = false;
+let startX = 0;
+let vx = 0;          // velocidad (para inercia)
+const friction = 0.92;
+const lerpK = 0.085;
 
-    return { card, panel, hero, seed:i+1 };
+function wrap(i, n){  // wrap circular 0..n
+  i = (i % n + n) % n;
+  return i;
+}
+
+function layout(){
+  const cs = getComputedStyle(document.documentElement);
+  const cardH = parseFloat(cs.getPropertyValue('--card-h'));
+  gapPx = parseFloat(cs.getPropertyValue('--gap').replace('vw',''))/100 * innerWidth; // aprox
+  cardW = parseFloat(cs.getPropertyValue('--card-w').replace('vw',''))/100 * innerWidth;
+
+  rail.style.width = (N*(cardW+gapPx)+innerWidth)+'px'; // grande para no recortar
+
+  cards.forEach((el, i)=>{
+    el.style.width  = cardW+'px';
+    el.style.height = cardH+'px';
   });
+}
+layout(); addEventListener('resize', layout);
 
-  // dots
-  ITEMS.forEach((_,i)=>{
-    const b=document.createElement('button');
-    b.className='dot'+(i===0?' active':''); b.setAttribute('aria-label',`Ir a ${ITEMS[i].title}`);
-    b.onclick=()=>goTo(i,true);
-    dots.appendChild(b);
-  });
+/* Posicionamiento continuo con wrapping */
+function render(){
+  // easing hacia target
+  const diff = shortestDelta(current, target, N);
+  current += diff * lerpK;
 
-  /* ===== LAYOUT ===== */
-  const getCSSNum = name => parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name))||0;
-  const cardWidth = () => (document.querySelector('.card')?.offsetWidth||0) + getCSSNum('--cardGap');
+  // para cada tarjeta, colocación en línea infinita
+  for(let i=0;i<N;i++){
+    // posición relativa (i - current) con wrap al rango [-N/2 .. N/2]
+    let rel = normalizeRange(i - current, -N/2, N/2);
+    const x = rel * (cardW + gapPx);
+    const el = cards[i];
 
-  let idx=0, tx=0, goal=0, dragging=false, lastX=0;
-  const LERP=.12;
+    el.style.transform = `translate3d(${(innerWidth/2 - cardW/2) + x}px, -50%, 0)`; // centrada vertical y desplazada
 
-  const centerFor = i => -(i * cardWidth());
-  const markPositions = ()=>{
-    cards.forEach((o,i)=> o.card.setAttribute('data-pos', clamp(i-idx,-3,3)));
-    qsa('.dot',dots).forEach((d,i)=> d.classList.toggle('active', i===idx));
-  };
-  function goTo(i, snap=false){
-    const n=ITEMS.length;
-    idx = (i<0? n-1 : i>=n? 0 : i);
-    goal = centerFor(idx);
-    if(snap) tx = goal;
-    markPositions();
-  }
-  const settle = ()=> goTo(Math.round(-tx / cardWidth()), true);
-
-  /* ===== INPUT ===== */
-  stage.addEventListener('mousedown', e=>{ dragging=true; lastX=e.clientX; stage.classList.add('grabbing'); stage.classList.remove('grab'); }, {passive:true});
-  addEventListener('mousemove', e=>{ if(!dragging) return; const dx=e.clientX-lastX; lastX=e.clientX; tx+=dx; }, {passive:true});
-  addEventListener('mouseup',   ()=>{ if(!dragging) return; dragging=false; stage.classList.remove('grabbing'); stage.classList.add('grab'); settle(); }, {passive:true});
-
-  stage.addEventListener('touchstart', e=>{ dragging=true; lastX=e.touches[0].clientX; }, {passive:true});
-  addEventListener('touchmove',  e=>{ if(!dragging) return; const dx=e.touches[0].clientX-lastX; lastX=e.touches[0].clientX; tx+=dx; }, {passive:true});
-  addEventListener('touchend',   ()=>{ if(!dragging) return; dragging=false; settle(); }, {passive:true});
-
-  addEventListener('wheel', e=>{ if(Math.abs(e.deltaY)>Math.abs(e.deltaX)) goTo(idx + Math.sign(e.deltaY), true); }, {passive:true});
-  addEventListener('keydown', e=>{ if(e.key==='ArrowRight') goTo(idx+1,true); if(e.key==='ArrowLeft') goTo(idx-1,true); });
-
-  qs('#prev').onclick = ()=>goTo(idx-1,true);
-  qs('#next').onclick = ()=>goTo(idx+1,true);
-  addEventListener('resize', ()=>{ goal=centerFor(idx); }, {passive:true});
-
-  /* ===== PARALLAX ===== */
-  let mouseX=0, mouseY=0;
-  addEventListener('mousemove', e=>{ mouseX=(e.clientX/innerWidth)*2-1; mouseY=(e.clientY/innerHeight)*2-1; }, {passive:true});
-
-  function mood(kind,t,seed,amp){
-    const s1=seed*1.37, s2=seed*2.13, s3=seed*3.17; let x=0,y=0,r=0;
-    switch(kind){
-      case 'lateral':   x=Math.sin(t*.35+s1)*amp; y=Math.sin(t*.18+s2)*amp*.35; break;
-      case 'onda':      y=Math.sin(t*.70+s1)*amp; x=Math.sin(t*.22+s2)*amp*.35; break;
-      case 'lissajous': x=Math.sin(t*.55+s1)*amp; y=Math.sin(t*.38+s2)*amp;       break;
-      case 'respira':   x=Math.sin(t*.22+s2)*amp*.5; y=Math.sin(t*.22+s3)*amp*.5; break;
-      case 'gira':      x=Math.sin(t*.30+s1)*amp*.6; y=Math.cos(t*.45+s2)*amp*.6; r=Math.sin(t*.4+s3)*3.0*SCALE; break;
-      case 'balance':   x=Math.sin(t*.22+s1)*amp*.5; y=Math.sin(t*.22+s2)*amp*.5; break;
-    }
-    return {x,y,r};
+    // Tilt/parallax sutil según distancia al centro:
+    const d = Math.min(1, Math.abs(rel));
+    el.style.filter = `saturate(${1 - d*0.35}) brightness(${1 - d*0.08})`;
+    const tilt = clamp(-rel, -1, 1) * 6; // grados
+    el.children[0].style.transform = `translateZ(0) rotate(${tilt}deg)`;
   }
 
-  function animate(now=performance.now()){
-    if(!dragging) tx = tx + (goal - tx) * LERP;
-    track.style.transform = `translate3d(${rnd(tx)}px,0,0)`;
-
-    const t = now/1000;
-    cards.forEach((o,i)=>{
-      const M = ITEMS[i].mood;
-      const p = mood(M,t,o.seed+11, 10*SCALE);
-      const h = mood(M,t,o.seed+23,  8*SCALE);
-      o.panel.style.transform = `translate3d(${rnd(p.x + mouseX*6)}px, ${rnd(p.y + mouseY*6)}px, 0)`;
-      o.hero .style.transform = `translate3d(${rnd(h.x + mouseX*4)}px, ${rnd(h.y + mouseY*4)}px, 0) rotate(${rnd(h.r||0)}deg)`;
-    });
-
-    requestAnimationFrame(animate);
+  // inercia post-drag
+  if(!press && Math.abs(vx) > .01){
+    target += vx;
+    vx *= friction;
   }
 
-  /* ===== AUTOPLAY ===== */
-  let autoId=null;
-  function startAuto(){ stopAuto(); autoId=setInterval(()=> goTo(idx+1,true), AUTO_MS); }
-  function stopAuto(){ if(autoId){ clearInterval(autoId); autoId=null; } }
+  // bullets
+  const active = Math.round(wrap(current, N));
+  dotEls.forEach((d,i)=>d.classList.toggle('is-active', i===wrap(active,N)));
 
-  /* ===== INIT ===== */
-  function init(){
-    tx = goal = centerFor(0);
-    stage.classList.add('grab');
-    markPositions();
-    startAuto();
-    requestAnimationFrame(animate);
-  }
-  if(document.readyState==='complete') init(); else addEventListener('load', init);
+  requestAnimationFrame(render);
+}
+requestAnimationFrame(render);
 
-  // util de diagnóstico desde la consola
-  window.SM = ()=>({idx, urlEjemplo:`${location.origin}/assets/vision-fg.png`});
-})();
+/* Helpers de rango cíclico */
+function shortestDelta(a,b,n){
+  // delta mínimo en anillo [0..n)
+  let d = (b - a) % n;
+  if(d >  n/2) d -= n;
+  if(d < -n/2) d += n;
+  return d;
+}
+function normalizeRange(v, min, max){
+  const w = max - min;
+  while(v < min) v += w;
+  while(v > max) v -= w;
+  return v;
+}
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+/* Arrastre / tacto */
+rail.addEventListener('pointerdown', e=>{
+  press = true; startX = e.clientX; vx = 0;
+  rail.setPointerCapture(e.pointerId);
+});
+rail.addEventListener('pointermove', e=>{
+  if(!press) return;
+  const dx = (e.clientX - startX) / (cardW + gapPx);
+  startX = e.clientX;
+  target -= dx;                 // objetivo corre con el drag
+  vx = -dx;                     // velocidad para inercia
+});
+addEventListener('pointerup', ()=>{
+  press = false;
+});
+
+/* Rueda horizontal (trackpad/mouse) */
+addEventListener('wheel', e=>{
+  const dx = (e.deltaY || e.deltaX) / 500; // sensibilidad
+  target += dx;
+});
+
+/* Flechas */
+document.getElementById('prev').onclick = ()=> snapTo(Math.round(target-1));
+document.getElementById('next').onclick = ()=> snapTo(Math.round(target+1));
+
+function snapTo(i){
+  target = wrap(i, N);
+}
+
+/* Inicio centrado en 0 */
+target = 0;
 </script>
 </body>
 </html>
